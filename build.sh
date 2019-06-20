@@ -3,20 +3,38 @@ if [[ "$SHOULD_BUILD" == "yes" ]]; then
   cp -rp src/* vscode/
   cd vscode
 
-  if [[ "$BUILDARCH" == "ia32" ]]; then
-    export npm_config_arch=ia32
-    export npm_config_target_arch=ia32
-  fi
-
-  if [[ "$BUILDARCH" == "arm64" ]]; then
-    export npm_config_arch=arm64
-    export npm_config_target_arch=arm64
-  fi
+  export npm_config_arch="$BUILDARCH"
+  export npm_config_target_arch="$BUILDARCH"
   ../update_settings.sh
 
   yarn
   mv product.json product.json.bak
-  cat product.json.bak | jq 'setpath(["extensionsGallery"]; {"serviceUrl": "https://marketplace.visualstudio.com/_apis/public/gallery", "cacheUrl": "https://vscode.blob.core.windows.net/gallery/index", "itemUrl": "https://marketplace.visualstudio.com/items"}) | setpath(["nameShort"]; "VSCodium") | setpath(["nameLong"]; "VSCodium") | setpath(["applicationName"]; "vscodium") | setpath(["win32MutexName"]; "vscodium") | setpath(["win32DirName"]; "VSCodium") | setpath(["win32NameVersion"]; "VSCodium") | setpath(["win32RegValueName"]; "VSCodium") | setpath(["win32AppUserModelId"]; "Microsoft.VSCodium") | setpath(["win32ShellNameShort"]; "V&SCodium") | setpath(["urlProtocol"]; "vscodium")' > product.json
+
+  # set fields in product.json
+  extensionAllowedBadgeProviders='setpath(["extensionAllowedBadgeProviders"]; ["api.bintray.com", "api.travis-ci.com", "api.travis-ci.org", "app.fossa.io", "badge.fury.io", "badge.waffle.io", "badgen.net", "badges.frapsoft.com", "badges.gitter.im", "badges.greenkeeper.io", "cdn.travis-ci.com", "cdn.travis-ci.org", "ci.appveyor.com", "circleci.com", "cla.opensource.microsoft.com", "codacy.com", "codeclimate.com", "codecov.io", "coveralls.io", "david-dm.org", "deepscan.io", "dev.azure.com", "flat.badgen.net", "gemnasium.com", "githost.io", "gitlab.com", "godoc.org", "goreportcard.com", "img.shields.io", "isitmaintained.com", "marketplace.visualstudio.com", "nodesecurity.io", "opencollective.com", "snyk.io", "travis-ci.com", "travis-ci.org", "visualstudio.com", "vsmarketplacebadge.apphb.com", "www.bithound.io", "www.versioneye.com"])'
+  updateUrl='setpath(["updateUrl"]; "https://vscodium.now.sh")'
+  releaseNotesUrl='setpath(["releaseNotesUrl"]; "https://go.microsoft.com/fwlink/?LinkID=533483#vscode")'
+  keyboardShortcutsUrlMac='setpath(["keyboardShortcutsUrlMac"]; "https://go.microsoft.com/fwlink/?linkid=832143")'
+  keyboardShortcutsUrlLinux='setpath(["keyboardShortcutsUrlLinux"]; "https://go.microsoft.com/fwlink/?linkid=832144")'
+  keyboardShortcutsUrlWin='setpath(["keyboardShortcutsUrlWin"]; "https://go.microsoft.com/fwlink/?linkid=832145")'
+  quality='setpath(["quality"]; "stable")'
+  extensionsGallery='setpath(["extensionsGallery"]; {"serviceUrl": "https://marketplace.visualstudio.com/_apis/public/gallery", "cacheUrl": "https://vscode.blob.core.windows.net/gallery/index", "itemUrl": "https://marketplace.visualstudio.com/items"})'
+  nameShort='setpath(["nameShort"]; "VSCodium")'
+  nameLong='setpath(["nameLong"]; "VSCodium")'
+  linuxIconName='setpath(["linuxIconName"]; "vscodium")'
+  applicationName='setpath(["applicationName"]; "codium")'
+  win32MutexName='setpath(["win32MutexName"]; "vscodium")'
+  win32DirName='setpath(["win32DirName"]; "VSCodium")'
+  win32NameVersion='setpath(["win32NameVersion"]; "VSCodium")'
+  win32RegValueName='setpath(["win32RegValueName"]; "VSCodium")'
+  win32AppUserModelId='setpath(["win32AppUserModelId"]; "Microsoft.VSCodium")'
+  win32ShellNameShort='setpath(["win32ShellNameShort"]; "V&SCodium")'
+  win32x64UserAppId='setpath (["win32x64UserAppId"]; "{{2E1F05D1-C245-4562-81EE-28188DB6FD17}")'
+  urlProtocol='setpath(["urlProtocol"]; "vscodium")'
+  extensionAllowedProposedApi='setpath(["extensionAllowedProposedApi"]; getpath(["extensionAllowedProposedApi"]) + ["ms-vsliveshare.vsliveshare"])'
+
+  product_json_changes="${extensionAllowedBadgeProviders} | ${updateUrl} | ${releaseNotesUrl} | ${keyboardShortcutsUrlMac} | ${keyboardShortcutsUrlLinux} | ${keyboardShortcutsUrlWin} | ${quality} | ${extensionsGallery} | ${nameShort} | ${nameLong} | ${linuxIconName} | ${applicationName} | ${win32MutexName} | ${win32DirName} | ${win32NameVersion} | ${win32RegValueName} | ${win32AppUserModelId} | ${win32ShellNameShort} | ${win32x64UserAppId} | ${urlProtocol} | ${extensionAllowedProposedApi}"
+  cat product.json.bak | jq "${product_json_changes}" > product.json
   cat product.json
   ../undo_telemetry.sh
 
@@ -27,32 +45,25 @@ if [[ "$SHOULD_BUILD" == "yes" ]]; then
     # unless the app name is code-oss
     # as we are renaming the application to vscodium
     # we need to edit a line in the post install template
-    sed -i "s/code-oss/vscodium/" resources/linux/debian/postinst.template
-    fi
+    sed -i "s/code-oss/codium/" resources/linux/debian/postinst.template
+  fi
 
   if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-    npm run gulp vscode-darwin-min
-  elif [[ "$BUILDARCH" == "ia32" ]]; then
-      npm run gulp vscode-linux-ia32-min
-      npm run gulp vscode-linux-ia32-build-deb
-      npm run gulp vscode-linux-ia32-build-rpm
-      unset npm_config_arch
-  elif [[ "$BUILDARCH" == "arm64" ]]; then
-    npm run gulp vscode-linux-arm64-min
-    npm run gulp vscode-linux-arm64-build-deb
-    # npm run gulp vscode-linux-arm64-build-rpm
+    npm install --global create-dmg
+    npm run gulp -- "vscode-darwin-min"
   elif [[ "$CI_WINDOWS" == "True" ]]; then
     cp LICENSE.txt LICENSE.rtf # windows build expects rtf license
-    npm run gulp vscode-win32-x64-min
-    npm run gulp vscode-win32-x64-inno-updater
-    npm run gulp vscode-win32-x64-system-setup
-    npm run gulp vscode-win32-x64-user-setup
-    npm run gulp vscode-win32-x64-archive
-  else
-    npm run gulp vscode-linux-x64-min
-    npm run gulp vscode-linux-x64-build-deb
-    npm run gulp vscode-linux-x64-build-rpm
-  fi  
+    npm run gulp -- "vscode-win32-${BUILDARCH}-min"
+    npm run gulp -- "vscode-win32-${BUILDARCH}-inno-updater"
+    npm run gulp -- "vscode-win32-${BUILDARCH}-system-setup"
+    npm run gulp -- "vscode-win32-${BUILDARCH}-user-setup"
+    npm run gulp -- "vscode-win32-${BUILDARCH}-archive"
+  else # linux
+    npm run gulp -- "vscode-linux-${BUILDARCH}-min"
+    npm run gulp -- "vscode-linux-${BUILDARCH}-build-deb"
+    npm run gulp -- "vscode-linux-${BUILDARCH}-build-rpm"
+    . ../create_appimage.sh
+  fi
 
   cd ..
 fi

@@ -2,16 +2,18 @@ matrix:
   include:
     - os: linux
       sudo: required
+      env: BUILDARCH=x64
     - os: linux
       sudo: required
       env: BUILDARCH=ia32
-    - os: linux
-      sudo: required
-      env: BUILDARCH=arm64
+# arm64 builds don't work yet
+#    - os: linux
+#      sudo: required
+#      env: BUILDARCH=arm64
     - os: osx
 
 language: node_js
-node_js: "8"
+node_js: "10"
 
 before_install:
   - curl -o- -L https://yarnpkg.com/install.sh | bash
@@ -25,7 +27,10 @@ script:
   - ./trigger-azure.sh
 
 before_deploy:
+  - ./sign_mac_app.sh
   - ./create_zip.sh
+  - ./create_dmg.sh
+  - ./sum.sh
 
 deploy:
   provider: releases
@@ -35,13 +40,19 @@ deploy:
   api_key: $GITHUB_TOKEN
   file_glob: true
   file:
+    - ./*.sha256
     - ./*.zip
     - ./*.tar.gz
+    - ./*.dmg
     - vscode/.build/linux/deb/i386/deb/*.deb
     - vscode/.build/linux/rpm/i386/*.rpm
     - vscode/.build/linux/deb/amd64/deb/*.deb
     - vscode/.build/linux/rpm/x86_64/*.rpm
     - vscode/.build/linux/deb/arm64/deb/*.deb
+    - vscode/out/*.AppImage
   on:
     all_branches: true
     condition: $SHOULD_BUILD = yes
+
+after_deploy:
+  - ./update_version.sh
